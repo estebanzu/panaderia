@@ -4,6 +4,7 @@ import urllib.parse
 import os
 import pandas as pd
 from datetime import datetime, date
+import re  # Importamos para limpiar el número de teléfono
 
 # --- 0. PAGE CONFIGURATION ---
 st.set_page_config(page_title="Pedidos Panadería", page_icon="🍞")
@@ -90,7 +91,6 @@ elif auth_status:
 
     st.title("🍞 Gestión de Pedidos Móvil")
     
-    # Botón de refrescar en la parte superior derecha para acceso rápido
     if st.button("🔄 Nuevo Cliente / Limpiar Todo"):
         st.rerun()
 
@@ -100,7 +100,7 @@ elif auth_status:
     st.subheader("👤 Datos Cliente")
     c1, c2 = st.columns(2)
     cust_name = c1.text_input("Nombre")
-    phone = c2.text_input("WhatsApp")
+    phone = c2.text_input("WhatsApp (8 dígitos)", placeholder="88888888")
     address = st.text_area("Dirección / Casa #", height=68)
 
     st.subheader("⏰ Entrega")
@@ -121,12 +121,9 @@ elif auth_status:
 
     st.markdown("---")
     
-    # Usamos columnas para los botones finales
     btn_col1, btn_col2 = st.columns(2)
-    
     with btn_col1:
         generar_btn = st.button("Generar y Guardar ✅", use_container_width=True)
-        
     with btn_col2:
         if st.button("Limpiar Formulario 🗑️", use_container_width=True):
             st.rerun()
@@ -136,6 +133,17 @@ elif auth_status:
             st.warning("Complete el nombre y el pedido.")
         else:
             fecha_str = delivery_date.strftime("%d/%m/%Y")
+            
+            # --- LIMPIEZA DEL NÚMERO DE TELÉFONO ---
+            # Eliminamos cualquier cosa que no sea un número (espacios, guiones, etc)
+            clean_phone = re.sub(r'\D', '', phone)
+            
+            # Si el usuario puso el número de 8 dígitos, le ponemos el 506
+            if len(clean_phone) == 8:
+                wa_phone = f"506{clean_phone}"
+            else:
+                wa_phone = clean_phone # Si ya traía el 506 o es otro formato, lo dejamos así
+
             msg = (
                 f"*PEDIDO DE PANADERÍA*\n"
                 f"👤 *Cliente:* {cust_name}\n"
@@ -162,4 +170,8 @@ elif auth_status:
                 st.error("Error al guardar historial.")
             
             st.text_area("Copia el mensaje:", msg, height=200)
-            st.link_button("🚀 Enviar a WhatsApp", f"https://wa.me/?text={urllib.parse.quote(msg)}", use_container_width=True)
+            
+            # --- BOTÓN DE WHATSAPP ACTUALIZADO ---
+            # Usamos la estructura https://wa.me/NÚMERO?text=MENSAJE
+            url_wa = f"https://wa.me/{wa_phone}?text={urllib.parse.quote(msg)}"
+            st.link_button("🚀 Enviar a WhatsApp", url_wa, use_container_width=True)

@@ -8,7 +8,7 @@ from datetime import datetime, date
 # --- 0. PAGE CONFIGURATION ---
 st.set_page_config(page_title="Pedidos Panadería", page_icon="🍞")
 
-# --- 1. PRODUCTOS EMBEBIDOS (Ya no necesitas el .json) ---
+# --- 1. PRODUCTOS EMBEBIDOS ---
 PRODUCTOS_LISTA = [
     {"name": "Bollo de pan relleno de chiverre", "price": 2500},
     {"name": "Bollo de pan relleno de dulce de leche", "price": 2500},
@@ -67,12 +67,10 @@ elif auth_status:
         if not os.path.exists('pedidos'):
             os.makedirs('pedidos')
         
-        # Guardar .txt
         filename = f"pedidos/{nombre_cliente.replace(' ', '_')}_{telefono}.txt"
         with open(filename, 'w', encoding='utf-8') as f:
             f.write(detalle_pedido)
         
-        # Guardar CSV
         csv_file = 'pedidos_historial.csv'
         nuevo_registro = {
             "Fecha Registro": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -91,6 +89,11 @@ elif auth_status:
             df_nuevo.to_csv(csv_file, mode='a', header=False, index=False, encoding='utf-8')
 
     st.title("🍞 Gestión de Pedidos Móvil")
+    
+    # Botón de refrescar en la parte superior derecha para acceso rápido
+    if st.button("🔄 Nuevo Cliente / Limpiar Todo"):
+        st.rerun()
+
     st.info("💳 SINPE Móvil: **+506 8883-0657**")
     
     # UI Sections
@@ -116,7 +119,19 @@ elif auth_status:
         if qty > 0:
             order[prod['name']] = {"qty": qty, "sub": qty * prod['price']}
 
-    if st.button("Generar y Guardar ✅", use_container_width=True):
+    st.markdown("---")
+    
+    # Usamos columnas para los botones finales
+    btn_col1, btn_col2 = st.columns(2)
+    
+    with btn_col1:
+        generar_btn = st.button("Generar y Guardar ✅", use_container_width=True)
+        
+    with btn_col2:
+        if st.button("Limpiar Formulario 🗑️", use_container_width=True):
+            st.rerun()
+
+    if generar_btn:
         if not cust_name or not order:
             st.warning("Complete el nombre y el pedido.")
         else:
@@ -142,9 +157,9 @@ elif auth_status:
             
             try:
                 guardar_en_historial(cust_name, phone, address, fecha_str, delivery_time, msg, total)
-                st.success("Guardado localmente.")
+                st.success("Pedido guardado con éxito.")
             except:
                 st.error("Error al guardar historial.")
             
             st.text_area("Copia el mensaje:", msg, height=200)
-            st.link_button("🚀 WhatsApp", f"https://wa.me/?text={urllib.parse.quote(msg)}")
+            st.link_button("🚀 Enviar a WhatsApp", f"https://wa.me/?text={urllib.parse.quote(msg)}", use_container_width=True)

@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Streamlit data outputs
+pedidos/
+pedidos_historial.csv
+
+# Env files
+.env
+
+# IDE/editor files
+.vscode/
+.idea/

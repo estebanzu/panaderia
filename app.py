@@ -113,8 +113,13 @@ if st.session_state.get("authentication_status"):
             if cust_name and order:
                 total = sum(item['sub'] for item in order.values())
                 fecha_str = delivery_date.strftime("%d/%m/%Y")
-                resumen_cocina = f"FECHA: {fecha_str} | HORA: {delivery_time}\n" + "\n".join([f"- {v['qty']}x {k}" for k, v in order.items()])
-                
+                resumen_cocina = (
+                        f"👩‍🍳 RESUMEN COCINA\n"
+                        f"Cliente: {cust_name}\n"
+                        f"Fecha: {fecha_str} ({delivery_time})\n"
+                        f"Dirección: {address}\n"  # <--- Esta es la línea añadida
+                        f"-------------------\n"
+                    ) + "\n".join([f"- {v['qty']}x {k}" for k, v in order.items()])
                 try:
                     data = {
                         "cliente": cust_name, "telefono": phone, "direccion": address,

@@ -7,7 +7,7 @@ from datetime import datetime, date
 import re
 
 # --- 0. CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Panadería Esteban", layout="wide", page_icon="🍞")
+st.set_page_config(page_title="Panaderia Esteban", layout="wide", page_icon="Bread")
 
 # --- 1. ESTILOS CSS PARA UX MÓVIL (Botones Grandes) ---
 st.markdown("""
@@ -48,7 +48,7 @@ def init_supabase():
         client = create_client(url, key)
         return client
     except Exception as e:
-        st.error("Error Crítico: No se encontraron los Secrets de Supabase.")
+        st.error("Error Critico: No se encontraron los Secrets de Supabase.")
         st.stop()
 
 supabase: Client = init_supabase()
@@ -68,9 +68,9 @@ authenticator = stauth.Authenticate(config['credentials'], config['cookie']['nam
 authenticator.login(location='main')
 
 if st.session_state.get("authentication_status"):
-    authenticator.logout('Cerrar Sesión', 'sidebar')
+    authenticator.logout('Cerrar Sesion', 'sidebar')
     
-    tab_ventas, tab_admin = st.tabs(["🛒 Nueva Venta", "📋 Tablero de Control"])
+    tab_ventas, tab_admin = st.tabs(["Nueva Venta", "Tablero de Control"])
 
     # --- TAB 1: VENTAS ---
     with tab_ventas:
@@ -89,13 +89,13 @@ if st.session_state.get("authentication_status"):
         with st.container():
             c1, c2 = st.columns(2)
             cust_name = c1.text_input("Nombre Cliente")
-            phone = c2.text_input("WhatsApp (8 dígitos)", placeholder="88888888")
-            address = st.text_area("Dirección Exacta")
+            phone = c2.text_input("WhatsApp (8 digitos)", placeholder="88888888")
+            address = st.text_area("Direccion Exacta")
 
-        st.subheader("⏰ Programación de Entrega")
+        st.subheader("Programacion de Entrega")
         t1, t2 = st.columns(2)
-        delivery_date = t1.date_input("Día de entrega", date.today())
-        time_options = ["Mañana: 9-10am", "Mañana: 10-11am", "Mañana: 11-12pm", "Tarde: 3-4pm", "Tarde: 4-5pm", "Tarde: 5-6pm"]
+        delivery_date = t1.date_input("Dia de entrega", date.today())
+        time_options = ["Manana: 9-10am", "Manana: 10-11am", "Manana: 11-12pm", "Tarde: 3-4pm", "Tarde: 4-5pm", "Tarde: 5-6pm"]
         delivery_time = t2.selectbox("Rango horario", time_options)
 
         st.divider()
@@ -103,21 +103,21 @@ if st.session_state.get("authentication_status"):
         for p in PRODUCTOS:
             col_n, col_p, col_q = st.columns([3, 1, 1])
             col_n.write(f"**{p['name']}**")
-            col_p.write(f"₡{p['price']:,}")
+            col_p.write(f"Colones {p['price']:,}")
             qty = col_q.number_input("Cant.", min_value=0, step=1, key=f"v_{p['name']}")
             if qty > 0:
                 order[p['name']] = {"qty": qty, "sub": qty * p['price']}
 
         st.divider()
-        if st.button("Confirmar Pedido ✅", use_container_width=True):
+        if st.button("Confirmar Pedido", use_container_width=True):
             if cust_name and order:
                 total = sum(item['sub'] for item in order.values())
                 fecha_str = delivery_date.strftime("%d/%m/%Y")
                 resumen_cocina = (
-                        f"👩‍🍳 RESUMEN COCINA\n"
+                        f"RESUMEN COCINA\n"
                         f"Cliente: {cust_name}\n"
                         f"Fecha: {fecha_str} ({delivery_time})\n"
-                        f"Dirección: {address}\n"  # <--- Esta es la línea añadida
+                        f"Direccion: {address}\n"
                         f"-------------------\n"
                     ) + "\n".join([f"- {v['qty']}x {k}" for k, v in order.items()])
                 try:
@@ -127,15 +127,15 @@ if st.session_state.get("authentication_status"):
                         "fecha_entrega": fecha_str, "horario": delivery_time
                     }
                     supabase.table("pedidos").insert(data).execute()
-                    st.toast(f"💾 Guardado: {cust_name}", icon="✅")
+                    st.toast(f"Guardado: {cust_name}")
                 except Exception as e:
                     st.error(f"Error DB: {e}")
 
                 clean_phone = re.sub(r'\D', '', phone)
                 wa_phone = f"506{clean_phone}" if len(clean_phone) == 8 else clean_phone
-                msg_wa = f"*PEDIDO PANADERÍA*\n👤 Cliente: {cust_name}\n📅 Entrega: {fecha_str}\n⏰ Hora: {delivery_time}\nTotal: ₡{total:,}\n💳 SINPE: 8883-0657"
-                st.link_button("🚀 Enviar a Cliente", f"https://wa.me/{wa_phone}?text={urllib.parse.quote(msg_wa)}", use_container_width=True)
-                st.link_button("👩‍🍳 Enviar a Cocina", f"https://wa.me/50688554445?text={urllib.parse.quote(resumen_cocina)}", use_container_width=True)
+                msg_wa = f"PEDIDO PANADERIA\nCliente: {cust_name}\nEntrega: {fecha_str}\nHora: {delivery_time}\nTotal: {total:,}\nSINPE: 8883-0657"
+                st.link_button("Enviar a Cliente", f"https://wa.me/{wa_phone}?text={urllib.parse.quote(msg_wa)}", use_container_width=True)
+                st.link_button("Enviar a Cocina", f"https://wa.me/50688554445?text={urllib.parse.quote(resumen_cocina)}", use_container_width=True)
             else:
                 st.warning("Faltan datos.")
 
@@ -155,21 +155,21 @@ if st.session_state.get("authentication_status"):
 
         # --- SECCIÓN DE DESCARGA Y RESUMEN ---
         if not df.empty:
-            with st.expander("📊 Herramientas de Resumen y Descarga", expanded=False):
+            with st.expander("Herramientas de Resumen y Descarga", expanded=False):
                 st.write("Usa estas herramientas para revisar todos los pedidos de un solo vistazo.")
                 
                 # Botón para descargar CSV
                 csv = df.to_csv(index=False).encode('utf-8')
                 st.download_button(
-                    label="📥 Descargar Historial (CSV)",
+                    label="Descargar Historial (CSV)",
                     data=csv,
                     file_name=f'pedidos_panaderia_{date.today()}.csv',
                     mime='text/csv',
                     use_container_width=True
                 )
                 
-                # Tabla simplificada (Ideal para pantallazo en móvil)
-                st.subheader("📝 Vista rápida para Cocina")
+                # Tabla simplificada
+                st.subheader("Vista rapida para Cocina")
                 df_resumen = df[['fecha_entrega', 'horario', 'cliente', 'detalle_cocina', 'estado']]
                 st.table(df_resumen)
 
@@ -177,27 +177,27 @@ if st.session_state.get("authentication_status"):
 
             col_pend, col_coci, col_list = st.columns(3)
             with col_pend:
-                st.subheader("⏳ Pendientes")
+                st.subheader("Pendientes")
                 for _, p in df[df['estado'] == 'Pendiente'].iterrows():
-                    with st.expander(f"📦 {p['cliente']}", expanded=True):
+                    with st.expander(f"Pedido: {p['cliente']}", expanded=True):
                         st.write(p['detalle_cocina'])
-                        if st.button("Empezar Cocina 🔥", key=f"btn_c_{p['id']}", use_container_width=True):
+                        if st.button("Empezar Cocina", key=f"btn_c_{p['id']}", use_container_width=True):
                             actualizar_estado(p['id'], 'Cocina')
 
             with col_coci:
-                st.subheader("🍳 Cocinando")
+                st.subheader("Cocinando")
                 for _, p in df[df['estado'] == 'Cocina'].iterrows():
-                    with st.expander(f"🔥 {p['cliente']}", expanded=True):
+                    with st.expander(f"En proceso: {p['cliente']}", expanded=True):
                         st.write(p['detalle_cocina'])
-                        if st.button("Marcar como Listo ✅", key=f"btn_l_{p['id']}", use_container_width=True):
+                        if st.button("Marcar como Listo", key=f"btn_l_{p['id']}", use_container_width=True):
                             actualizar_estado(p['id'], 'Listo')
 
             with col_list:
-                st.subheader("🥡 Listos")
+                st.subheader("Listos")
                 for _, p in df[df['estado'] == 'Listo'].iterrows():
-                    with st.expander(f"✅ {p['cliente']}", expanded=True):
-                        st.write(f"Total: ₡{p['total']:,}")
-                        if st.button("Entregado 🏁", key=f"btn_e_{p['id']}", use_container_width=True):
+                    with st.expander(f"Listo: {p['cliente']}", expanded=True):
+                        st.write(f"Total: {p['total']:,}")
+                        if st.button("Entregado", key=f"btn_e_{p['id']}", use_container_width=True):
                             actualizar_estado(p['id'], 'Entregado')
         else:
             st.info("No hay pedidos activos.")

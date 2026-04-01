@@ -133,7 +133,21 @@ if st.session_state.get("authentication_status"):
 
                 clean_phone = re.sub(r'\D', '', phone)
                 wa_phone = f"506{clean_phone}" if len(clean_phone) == 8 else clean_phone
-                msg_wa = f"PEDIDO PANADERIA\nCliente: {cust_name}\nEntrega: {fecha_str}\nHora: {delivery_time}\nTotal: {total:,}\nSINPE: 8883-0657"
+                
+                msg_wa = (
+                    f"*PEDIDO PANADERIA*\n\n"
+                    f"*Cliente:* {cust_name}\n"
+                    f"*Telefono:* {phone}\n"
+                    f"*Direccion:* {address}\n"
+                    f"*Entrega:* {fecha_str}\n"
+                    f"*Hora:* {delivery_time}\n"
+                    f"-------------------\n"
+                    f"*TOTAL:* Colones {total:,}\n\n"
+                    f"SINPE Movil: 8883-0657\n"
+                    f"Favor enviar el comprobante. ¡Gracias!"
+                )
+
+
                 st.link_button("Enviar a Cliente", f"https://wa.me/{wa_phone}?text={urllib.parse.quote(msg_wa)}", use_container_width=True)
                 st.link_button("Enviar a Cocina", f"https://wa.me/50688554445?text={urllib.parse.quote(resumen_cocina)}", use_container_width=True)
             else:

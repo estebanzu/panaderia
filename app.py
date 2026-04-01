@@ -72,12 +72,9 @@ if st.session_state.get("authentication_status"):
     
     tab_ventas, tab_admin = st.tabs(["🛒 Nueva Venta", "📋 Tablero de Control"])
 
-    # ---------------------------------------------------------
-    # TAB 1: VENTAS (CON FECHA Y HORARIO RESTAURADOS)
-    # ---------------------------------------------------------
+    # --- TAB 1: VENTAS ---
     with tab_ventas:
         st.title("Generar Pedido")
-        
         PRODUCTOS = [
             {"name": "Bollo de pan relleno de chiverre", "price": 2500},
             {"name": "Bollo de pan relleno de dulce de leche", "price": 2500},
@@ -89,14 +86,12 @@ if st.session_state.get("authentication_status"):
             {"name": "1/2 kg de chiverre", "price": 2300}
         ]
 
-        # Datos del Cliente
         with st.container():
             c1, c2 = st.columns(2)
             cust_name = c1.text_input("Nombre Cliente")
             phone = c2.text_input("WhatsApp (8 dígitos)", placeholder="88888888")
             address = st.text_area("Dirección Exacta")
 
-        # --- SECCIÓN RESTAURADA: FECHA Y HORA ---
         st.subheader("⏰ Programación de Entrega")
         t1, t2 = st.columns(2)
         delivery_date = t1.date_input("Día de entrega", date.today())
@@ -104,7 +99,6 @@ if st.session_state.get("authentication_status"):
         delivery_time = t2.selectbox("Rango horario", time_options)
 
         st.divider()
-        st.subheader("Selección de Productos")
         order = {}
         for p in PRODUCTOS:
             col_n, col_p, col_q = st.columns([3, 1, 1])
@@ -115,53 +109,32 @@ if st.session_state.get("authentication_status"):
                 order[p['name']] = {"qty": qty, "sub": qty * p['price']}
 
         st.divider()
-        
         if st.button("Confirmar Pedido ✅", use_container_width=True):
             if cust_name and order:
                 total = sum(item['sub'] for item in order.values())
                 fecha_str = delivery_date.strftime("%d/%m/%Y")
-                
-                # Resumen para cocina
                 resumen_cocina = f"FECHA: {fecha_str} | HORA: {delivery_time}\n" + "\n".join([f"- {v['qty']}x {k}" for k, v in order.items()])
                 
                 try:
                     data = {
-                        "cliente": cust_name, 
-                        "telefono": phone, 
-                        "direccion": address,
-                        "detalle_cocina": resumen_cocina, 
-                        "total": total, 
-                        "estado": "Pendiente",
-                        "fecha_entrega": fecha_str,  # Asegúrate de que estas columnas existan en Supabase
-                        "horario": delivery_time
+                        "cliente": cust_name, "telefono": phone, "direccion": address,
+                        "detalle_cocina": resumen_cocina, "total": total, "estado": "Pendiente",
+                        "fecha_entrega": fecha_str, "horario": delivery_time
                     }
                     supabase.table("pedidos").insert(data).execute()
-                    st.toast(f" Guardado : {cust_name}", icon="✅")
+                    st.toast(f"💾 Guardado: {cust_name}", icon="✅")
                 except Exception as e:
                     st.error(f"Error DB: {e}")
 
-                # WhatsApp
                 clean_phone = re.sub(r'\D', '', phone)
                 wa_phone = f"506{clean_phone}" if len(clean_phone) == 8 else clean_phone
-                msg_wa = (
-                    f"*PEDIDO PANADERÍA*\n"
-                    f"👤 Cliente: {cust_name}\n"
-                    f"📅 Entrega: {fecha_str}\n"
-                    f"⏰ Hora: {delivery_time}\n"
-                    f"🏠 Dir: {address}\n"
-                    f"Total: ₡{total:,}\n"
-                    f"💳 SINPE: 8883-0657 or Efectivo"
-                )
-                
-                st.subheader("📲 Enviar Resúmenes")
-                st.link_button("🚀 Enviar a Cliente (WhatsApp)", f"https://wa.me/{wa_phone}?text={urllib.parse.quote(msg_wa)}", use_container_width=True)
-                st.link_button("👩‍🍳 Enviar a Mi Cocina (Tracking)", f"https://wa.me/50688554445?text={urllib.parse.quote(resumen_cocina)}", use_container_width=True)
+                msg_wa = f"*PEDIDO PANADERÍA*\n👤 Cliente: {cust_name}\n📅 Entrega: {fecha_str}\n⏰ Hora: {delivery_time}\nTotal: ₡{total:,}\n💳 SINPE: 8883-0657"
+                st.link_button("🚀 Enviar a Cliente", f"https://wa.me/{wa_phone}?text={urllib.parse.quote(msg_wa)}", use_container_width=True)
+                st.link_button("👩‍🍳 Enviar a Cocina", f"https://wa.me/50688554445?text={urllib.parse.quote(resumen_cocina)}", use_container_width=True)
             else:
                 st.warning("Faltan datos.")
 
-    # ---------------------------------------------------------
-    # TAB 2: ADMIN (TRELLO)
-    # ---------------------------------------------------------
+    # --- TAB 2: ADMIN (TRELLO + RESUMEN) ---
     with tab_admin:
         st.title("Tablero de Pedidos")
         
@@ -175,9 +148,29 @@ if st.session_state.get("authentication_status"):
         except:
             df = pd.DataFrame()
 
+        # --- SECCIÓN DE DESCARGA Y RESUMEN ---
         if not df.empty:
-            col_pend, col_coci, col_list = st.columns(3)
+            with st.expander("📊 Herramientas de Resumen y Descarga", expanded=False):
+                st.write("Usa estas herramientas para revisar todos los pedidos de un solo vistazo.")
+                
+                # Botón para descargar CSV
+                csv = df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📥 Descargar Historial (CSV)",
+                    data=csv,
+                    file_name=f'pedidos_panaderia_{date.today()}.csv',
+                    mime='text/csv',
+                    use_container_width=True
+                )
+                
+                # Tabla simplificada (Ideal para pantallazo en móvil)
+                st.subheader("📝 Vista rápida para Cocina")
+                df_resumen = df[['fecha_entrega', 'horario', 'cliente', 'detalle_cocina', 'estado']]
+                st.table(df_resumen)
 
+            st.divider()
+
+            col_pend, col_coci, col_list = st.columns(3)
             with col_pend:
                 st.subheader("⏳ Pendientes")
                 for _, p in df[df['estado'] == 'Pendiente'].iterrows():

@@ -1,220 +1,383 @@
+from __future__ import annotations
+
+from datetime import date
+
+import pandas as pd
 import streamlit as st
 import streamlit_authenticator as stauth
-from supabase import create_client, Client
-import urllib.parse
-import pandas as pd
-from datetime import datetime, date
-import re
+from supabase import Client
 
-# --- 0. CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Panaderia Esteban", layout="wide", page_icon="Bread")
+from config import (
+    ESTADO_COCINA,
+    ESTADO_ENTREGADO,
+    ESTADO_LISTO,
+    ESTADO_PENDIENTE,
+    MOBILE_CSS,
+    PAGE_ICON,
+    PAGE_LAYOUT,
+    PAGE_TITLE,
+    PRODUCTOS,
+    TIME_OPTIONS,
+    build_auth_config,
+)
+from utils import (
+    actualizar_estado_pedido,
+    build_cliente_whatsapp_url,
+    build_cocina_whatsapp_url,
+    build_msg_cliente,
+    build_pedido_payload,
+    build_resumen_cocina,
+    format_delivery_date,
+    guardar_pedido,
+    init_supabase,
+    normalize_text,
+    obtener_pedidos_activos,
+    eliminar_pedido,   # <-- NUEVO
+)
 
-# --- 1. ESTILOS CSS PARA UX MÓVIL (Botones Grandes) ---
-st.markdown("""
-    <style>
-    div.stButton > button:first-child {
-        height: 3.5em;
-        width: 100%;
-        border-radius: 12px;
-        font-size: 18px;
-        font-weight: bold;
-        margin-bottom: 10px;
-        border: 2px solid #e0e0e0;
-    }
-    div.stButton > button:first-child:contains("Confirmar") {
-        background-color: #28a745;
-        color: white;
-        border: none;
-    }
-    div.stButton > button:first-child:contains("WhatsApp"), 
-    div.stButton > button:first-child:contains("Enviar a") {
-        background-color: #25D366;
-        color: white;
-        border: none;
-    }
-    div.stButton > button:first-child:contains("Empezar") { background-color: #ffc107; color: black; }
-    div.stButton > button:first-child:contains("Listo") { background-color: #17a2b8; color: white; }
-    div.stButton > button:first-child:contains("Entregado") { background-color: #6c757d; color: white; }
-    div.stNumberInput input { height: 3em !important; font-size: 18px !important; }
-    </style>
-""", unsafe_allow_html=True)
 
-# --- 2. CONEXIÓN A SUPABASE ---
-@st.cache_resource
-def init_supabase():
-    try:
-        url = st.secrets["SUPABASE_URL"]
-        key = st.secrets["SUPABASE_KEY"]
-        client = create_client(url, key)
-        return client
-    except Exception as e:
-        st.error("Error Critico: No se encontraron los Secrets de Supabase.")
-        st.stop()
+st.set_page_config(page_title=PAGE_TITLE, layout=PAGE_LAYOUT, page_icon=PAGE_ICON)
+st.markdown(MOBILE_CSS, unsafe_allow_html=True)
 
 supabase: Client = init_supabase()
 
-# --- 3. AUTENTICACIÓN ---
-my_hashed_password = '$2b$12$wCDqwrJdP0PxofFY3uLQNeHDlfEc0ujdJDIp8JVTH3fd9GkQlhYIS'
-config = {
-    "credentials": {"usernames": {"esteban": {"name": "Esteban Zuniga", "password": my_hashed_password}}},
-    "cookie": {
-        "expiry_days": 30, 
-        "key": "esta_es_una_llave_super_secreta_y_larga_para_la_panaderia_zuniga_2026", 
-        "name": "bakery_cookie"
-    }
-}
 
-authenticator = stauth.Authenticate(config['credentials'], config['cookie']['name'], config['cookie']['key'], config['cookie']['expiry_days'])
-authenticator.login(location='main')
+def create_authenticator() -> stauth.Authenticate:
+    config = build_auth_config()
+    return stauth.Authenticate(
+        config["credentials"],
+        config["cookie"]["name"],
+        config["cookie"]["key"],
+        config["cookie"]["expiry_days"],
+    )
 
-if st.session_state.get("authentication_status"):
-    authenticator.logout('Cerrar Sesion', 'sidebar')
+
+def eliminar_pedido_ui(id_pedido: int) -> None:
+    """UI wrapper para eliminar pedidos con confirmación."""
+    try:
+        eliminar_pedido(supabase, id_pedido)
+        st.toast("Pedido eliminado")
+        st.session_state.pop(f"confirm_delete_{id_pedido}", None)
+        st.rerun()
+    except Exception as exc:
+        st.error(f"Error eliminando pedido: {exc}")
+
+
+def collect_customer_data() -> tuple[str, str, str]:
+    with st.container():
+        col_left, col_right = st.columns(2)
+        cust_name = normalize_text(col_left.text_input("Nombre Cliente"))
+        phone = normalize_text(col_right.text_input("WhatsApp (8 digitos)", placeholder="88888888"))
+        address = normalize_text(st.text_area("Direccion Exacta"))
+    return cust_name, phone, address
+
+
+def collect_delivery_data() -> tuple[date, str]:
+    st.subheader("Programacion de Entrega")
+    col_left, col_right = st.columns(2)
+    delivery_date = col_left.date_input("Dia de entrega", date.today())
+    delivery_time = col_right.selectbox("Rango horario", TIME_OPTIONS)
+    return delivery_date, delivery_time
+
+
+def collect_order_items() -> dict:
+    """Renders product quantity inputs and returns the selected order items."""
+    order: dict = {}
+
+    st.divider()
+
+    header_name, header_price, header_qty = st.columns([3, 1, 1])
+    header_name.markdown("**Producto**")
+    header_price.markdown("**Precio**")
+    header_qty.markdown("**Cant.**")
+
+    st.divider()
+
+    for product in PRODUCTOS:
+        col_name, col_price, col_qty = st.columns([3, 1, 1])
+
+        col_name.markdown(product["name"])
+        col_price.markdown(f"₡ {product['price']:,}")
+
+        qty = col_qty.number_input(
+            "",
+            min_value=0,
+            step=1,
+            key=f"v_{product['name']}"
+        )
+
+        if qty > 0:
+            order[product["name"]] = {
+                "qty": qty,
+                "sub": qty * product["price"]
+            }
+
+    subtotal = sum(item["sub"] for item in order.values())
+
+    st.divider()
+    st.markdown(f"### Subtotal: ₡ {subtotal:,}")
+
+    return order
+
+
+def process_new_order(
+    cust_name: str,
+    phone: str,
+    address: str,
+    delivery_date: date,
+    delivery_time: str,
+    order: dict,
+) -> None:
+    """Persists an order and renders the WhatsApp action buttons."""
+    errores = validar_pedido(cust_name, phone, address, order)
+    if errores:
+        for error in errores:
+            st.warning(error)
+        return
+
+    total = sum(item["sub"] for item in order.values())
+    fecha_str = format_delivery_date(delivery_date)
+    resumen_cocina = build_resumen_cocina(cust_name, fecha_str, delivery_time, address, order)
+
+    try:
+        data = build_pedido_payload(
+            cust_name=cust_name,
+            phone=phone,
+            address=address,
+            resumen_cocina=resumen_cocina,
+            total=total,
+            fecha_str=fecha_str,
+            delivery_time=delivery_time,
+        )
+        guardar_pedido(supabase, data)
+        st.toast(f"Guardado: {cust_name}")
+    except Exception as exc:
+        st.error(f"Error DB: {exc}")
     
-    tab_ventas, tab_admin = st.tabs(["Nueva Venta", "Tablero de Control"])
+    msg_cliente = build_msg_cliente(cust_name, phone, address, fecha_str, delivery_time, total)
+    st.link_button(
+        "Enviar a Cliente",
+        build_cliente_whatsapp_url(phone, msg_cliente),
+        use_container_width=True,
+    )
+    st.link_button(
+        "Enviar a Cocina",
+        build_cocina_whatsapp_url(resumen_cocina),
+        use_container_width=True,
+    )
 
-    # --- TAB 1: VENTAS ---
-    with tab_ventas:
-        st.title("Generar Pedido")
-        PRODUCTOS = [
-            {"name": "Bollo de pan relleno de chiverre", "price": 2500},
-            {"name": "Bollo de pan relleno de dulce de leche", "price": 2500},
-            {"name": "Bollo de pan relleno de queso", "price": 2500},
-            {"name": "Bollo de pan sin relleno", "price": 2000},
-            {"name": "Bolsa de 4 bollitos de pan casero", "price": 1000},
-            {"name": "Bolsa de 4 empanadas de chiverre", "price": 1200},
-            {"name": "1 kilo de chiverre", "price": 4500},
-            {"name": "1/2 kg de chiverre", "price": 2300}
+
+def render_admin_filters(df: pd.DataFrame) -> pd.DataFrame:
+    """Aplica filtros de búsqueda y estado."""
+    st.subheader("Filtros")
+
+    col1, col2 = st.columns(2)
+    search_term = col1.text_input("Buscar por cliente o teléfono")
+    estado_filtro = col2.selectbox(
+        "Filtrar por estado",
+        ["Todos", ESTADO_PENDIENTE, ESTADO_COCINA, ESTADO_LISTO],
+    )
+
+    filtered_df = df.copy()
+
+    if search_term:
+        term = search_term.lower()
+        filtered_df = filtered_df[
+            filtered_df["cliente"].fillna("").str.lower().str.contains(term)
+            | filtered_df["telefono"].fillna("").astype(str).str.lower().str.contains(term)
         ]
 
-        with st.container():
-            c1, c2 = st.columns(2)
-            cust_name = c1.text_input("Nombre Cliente")
-            phone = c2.text_input("WhatsApp (8 digitos)", placeholder="88888888")
-            address = st.text_area("Direccion Exacta")
+    if estado_filtro != "Todos":
+        filtered_df = filtered_df[filtered_df["estado"] == estado_filtro]
 
-        st.subheader("Programacion de Entrega")
-        t1, t2 = st.columns(2)
-        delivery_date = t1.date_input("Dia de entrega", date.today())
-        time_options = ["Manana: 9-10am", "Manana: 10-11am", "Manana: 11-12pm", "Tarde: 3-4pm", "Tarde: 4-5pm", "Tarde: 5-6pm"]
-        delivery_time = t2.selectbox("Rango horario", time_options)
+    return filtered_df
 
-        st.divider()
-        order = {}
-        for p in PRODUCTOS:
-            col_n, col_p, col_q = st.columns([3, 1, 1])
-            col_n.write(f"**{p['name']}**")
-            col_p.write(f"Colones {p['price']:,}")
-            qty = col_q.number_input("Cant.", min_value=0, step=1, key=f"v_{p['name']}")
-            if qty > 0:
-                order[p['name']] = {"qty": qty, "sub": qty * p['price']}
+def render_tab_ventas() -> None:
+    """Renders the sales tab."""
+    st.title("Generar Pedido")
+    cust_name, phone, address = collect_customer_data()
+    delivery_date, delivery_time = collect_delivery_data()
+    order = collect_order_items()
 
-        st.divider()
-        if st.button("Confirmar Pedido", use_container_width=True):
-            if cust_name and order:
-                total = sum(item['sub'] for item in order.values())
-                fecha_str = delivery_date.strftime("%d/%m/%Y")
-                resumen_cocina = (
-                        f"RESUMEN COCINA\n"
-                        f"Cliente: {cust_name}\n"
-                        f"Fecha: {fecha_str} ({delivery_time})\n"
-                        f"Direccion: {address}\n"
-                        f"-------------------\n"
-                    ) + "\n".join([f"- {v['qty']}x {k}" for k, v in order.items()])
-                try:
-                    data = {
-                        "cliente": cust_name, "telefono": phone, "direccion": address,
-                        "detalle_cocina": resumen_cocina, "total": total, "estado": "Pendiente",
-                        "fecha_entrega": fecha_str, "horario": delivery_time
-                    }
-                    supabase.table("pedidos").insert(data).execute()
-                    st.toast(f"Guardado: {cust_name}")
-                except Exception as e:
-                    st.error(f"Error DB: {e}")
+    render_order_summary(cust_name, phone, address, delivery_date, delivery_time, order)
 
-                clean_phone = re.sub(r'\D', '', phone)
-                wa_phone = f"506{clean_phone}" if len(clean_phone) == 8 else clean_phone
-                
-                msg_wa = (
-                    f"*PEDIDO PANADERIA*\n\n"
-                    f"*Cliente:* {cust_name}\n"
-                    f"*Telefono:* {phone}\n"
-                    f"*Direccion:* {address}\n"
-                    f"*Entrega:* {fecha_str}\n"
-                    f"*Hora:* {delivery_time}\n"
-                    f"-------------------\n"
-                    f"*TOTAL:* Colones {total:,}\n\n"
-                    f"SINPE Movil: 8883-0657\n"
-                    f"Favor enviar el comprobante. ¡Gracias!"
-                )
+    st.divider()
+    if st.button("Confirmar Pedido", use_container_width=True):
+        process_new_order(cust_name, phone, address, delivery_date, delivery_time, order)
+
+def validar_pedido(cust_name: str, phone: str, address: str, order: dict) -> list[str]:
+    """Valida los campos del pedido y retorna lista de errores."""
+    errores: list[str] = []
+
+    if not cust_name:
+        errores.append("Debes ingresar el nombre del cliente.")
+
+    if not order:
+        errores.append("Debes seleccionar al menos un producto.")
+
+    if phone:
+        clean_phone = "".join(ch for ch in phone if ch.isdigit())
+        if len(clean_phone) != 8:
+            errores.append("El WhatsApp debe tener 8 dígitos.")
+
+    if not address:
+        errores.append("Debes ingresar la dirección exacta.")
+
+    return errores
+
+def render_download_and_summary(df: pd.DataFrame) -> None:
+    with st.expander("Herramientas de Resumen y Descarga", expanded=False):
+        st.write("Usa estas herramientas para revisar todos los pedidos de un solo vistazo.")
+
+        csv = df.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="Descargar Historial (CSV)",
+            data=csv,
+            file_name=f"pedidos_panaderia_{date.today()}.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+
+        st.subheader("Vista rapida para Cocina")
+        df_resumen = df[["fecha_entrega", "horario", "cliente", "detalle_cocina", "estado"]]
+        st.table(df_resumen)
 
 
-                st.link_button("Enviar a Cliente", f"https://wa.me/{wa_phone}?text={urllib.parse.quote(msg_wa)}", use_container_width=True)
-                st.link_button("Enviar a Cocina", f"https://wa.me/50688554445?text={urllib.parse.quote(resumen_cocina)}", use_container_width=True)
+def render_estado_column(df: pd.DataFrame, source_state: str, title: str, button_label: str, next_state: str, prefix: str) -> None:
+    """Renders a status column with expandable order cards."""
+    st.subheader(title)
+    df_filtrado = df[df["estado"] == source_state]
+
+    for _, pedido in df_filtrado.iterrows():
+        with st.expander(f"{prefix}: {pedido['cliente']}", expanded=True):
+            if source_state == ESTADO_LISTO:
+                st.write(f"Total: {pedido['total']:,}")
             else:
-                st.warning("Faltan datos.")
+                st.write(pedido["detalle_cocina"])
 
-    # --- TAB 2: ADMIN (TRELLO + RESUMEN) ---
-    with tab_admin:
-        st.title("Tablero de Pedidos")
-        
-        def actualizar_estado(id_pedido, nuevo_estado):
-            supabase.table("pedidos").update({"estado": nuevo_estado}).eq("id", id_pedido).execute()
-            st.rerun()
+            col1, col2 = st.columns(2)
 
-        try:
-            res = supabase.table("pedidos").select("*").not_.eq("estado", "Entregado").execute()
-            df = pd.DataFrame(res.data)
-        except:
-            df = pd.DataFrame()
+            with col1:
+                if st.button(button_label, key=f"btn_{next_state}_{pedido['id']}", use_container_width=True):
+                    actualizar_estado_pedido(supabase, pedido["id"], next_state)
+                    st.rerun()
 
-        # --- SECCIÓN DE DESCARGA Y RESUMEN ---
-        if not df.empty:
-            with st.expander("Herramientas de Resumen y Descarga", expanded=False):
-                st.write("Usa estas herramientas para revisar todos los pedidos de un solo vistazo.")
-                
-                # Botón para descargar CSV
-                csv = df.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label="Descargar Historial (CSV)",
-                    data=csv,
-                    file_name=f'pedidos_panaderia_{date.today()}.csv',
-                    mime='text/csv',
-                    use_container_width=True
-                )
-                
-                # Tabla simplificada
-                st.subheader("Vista rapida para Cocina")
-                df_resumen = df[['fecha_entrega', 'horario', 'cliente', 'detalle_cocina', 'estado']]
-                st.table(df_resumen)
+            confirm_key = f"confirm_delete_{pedido['id']}"
 
-            st.divider()
+            with col2:
+                if not st.session_state.get(confirm_key, False):
+                    if st.button("Eliminar", key=f"btn_del_{pedido['id']}", use_container_width=True):
+                        st.session_state[confirm_key] = True
+                        st.rerun()
+                else:
+                    st.warning("¿Seguro que deseas eliminar este pedido?")
 
-            col_pend, col_coci, col_list = st.columns(3)
-            with col_pend:
-                st.subheader("Pendientes")
-                for _, p in df[df['estado'] == 'Pendiente'].iterrows():
-                    with st.expander(f"Pedido: {p['cliente']}", expanded=True):
-                        st.write(p['detalle_cocina'])
-                        if st.button("Empezar Cocina", key=f"btn_c_{p['id']}", use_container_width=True):
-                            actualizar_estado(p['id'], 'Cocina')
+                    c1, c2 = st.columns(2)
 
-            with col_coci:
-                st.subheader("Cocinando")
-                for _, p in df[df['estado'] == 'Cocina'].iterrows():
-                    with st.expander(f"En proceso: {p['cliente']}", expanded=True):
-                        st.write(p['detalle_cocina'])
-                        if st.button("Marcar como Listo", key=f"btn_l_{p['id']}", use_container_width=True):
-                            actualizar_estado(p['id'], 'Listo')
+                    with c1:
+                        if st.button("Sí, eliminar", key=f"btn_yes_del_{pedido['id']}", use_container_width=True):
+                            eliminar_pedido_ui(pedido["id"])
 
-            with col_list:
-                st.subheader("Listos")
-                for _, p in df[df['estado'] == 'Listo'].iterrows():
-                    with st.expander(f"Listo: {p['cliente']}", expanded=True):
-                        st.write(f"Total: {p['total']:,}")
-                        if st.button("Entregado", key=f"btn_e_{p['id']}", use_container_width=True):
-                            actualizar_estado(p['id'], 'Entregado')
-        else:
-            st.info("No hay pedidos activos.")
+                    with c2:
+                        if st.button("Cancelar", key=f"btn_cancel_del_{pedido['id']}", use_container_width=True):
+                            st.session_state.pop(confirm_key, None)
+                            st.rerun()
 
-elif st.session_state.get("authentication_status") == False:
-    st.error("Error de login")
+
+def render_admin_metrics(df: pd.DataFrame) -> None:
+    """Muestra métricas rápidas del tablero."""
+    total_pedidos = len(df)
+    pendientes = len(df[df["estado"] == ESTADO_PENDIENTE])
+    cocina = len(df[df["estado"] == ESTADO_COCINA])
+    listos = len(df[df["estado"] == ESTADO_LISTO])
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Activos", total_pedidos)
+    col2.metric("Pendientes", pendientes)
+    col3.metric("Cocinando", cocina)
+    col4.metric("Listos", listos)
+
+    st.divider()
+
+def render_tab_admin() -> None:
+    """Renders the admin board."""
+    st.title("Tablero de Pedidos")
+    df = obtener_pedidos_activos(supabase)
+
+    if df.empty:
+        st.info("No hay pedidos activos.")
+        return
+
+    render_admin_metrics(df)
+
+    df_filtrado = render_admin_filters(df)
+
+    if df_filtrado.empty:
+        st.info("No hay pedidos que coincidan con los filtros.")
+        return
+
+    render_download_and_summary(df_filtrado)
+    st.divider()
+
+    col_pend, col_coci, col_list = st.columns(3)
+    with col_pend:
+        render_estado_column(df_filtrado, ESTADO_PENDIENTE, "Pendientes", "Empezar Cocina", ESTADO_COCINA, "Pedido")
+    with col_coci:
+        render_estado_column(df_filtrado, ESTADO_COCINA, "Cocinando", "Marcar como Listo", ESTADO_LISTO, "En proceso")
+    with col_list:
+        render_estado_column(df_filtrado, ESTADO_LISTO, "Listos", "Entregado", ESTADO_ENTREGADO, "Listo")
+
+def render_order_summary(
+    cust_name: str,
+    phone: str,
+    address: str,
+    delivery_date: date,
+    delivery_time: str,
+    order: dict,
+) -> None:
+    """Muestra un resumen en vivo del pedido."""
+    subtotal = sum(item["sub"] for item in order.values())
+
+    st.divider()
+    st.subheader("Resumen del Pedido")
+
+    st.markdown(f"**Cliente:** {cust_name or '-'}")
+    st.markdown(f"**WhatsApp:** {phone or '-'}")
+    st.markdown(f"**Dirección:** {address or '-'}")
+    st.markdown(f"**Entrega:** {format_delivery_date(delivery_date)}")
+    st.markdown(f"**Horario:** {delivery_time}")
+
+    if order:
+        resumen_df = pd.DataFrame(
+            [
+                {
+                    "Producto": nombre,
+                    "Cant.": data["qty"],
+                    "Subtotal": f"₡ {data['sub']:,}",
+                }
+                for nombre, data in order.items()
+            ]
+        )
+        st.table(resumen_df)
+    else:
+        st.info("Aún no has agregado productos.")
+
+    st.success(f"Subtotal actual: ₡ {subtotal:,}")
+
+def main() -> None:
+    authenticator = create_authenticator()
+    authenticator.login(location="main")
+
+    if st.session_state.get("authentication_status"):
+        authenticator.logout("Cerrar Sesion", "sidebar")
+        tab_ventas, tab_admin = st.tabs(["Nueva Venta", "Tablero de Control"])
+        with tab_ventas:
+            render_tab_ventas()
+        with tab_admin:
+            render_tab_admin()
+    elif st.session_state.get("authentication_status") is False:
+        st.error("Error de login")
+
+
+if __name__ == "__main__":
+    main()

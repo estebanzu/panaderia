@@ -1,0 +1,359 @@
+roadmap 
+1. Mejoras de UX en toma de pedidos
+Resumen del pedido en vivo
+
+Además del subtotal, mostrar una mini caja lateral o al final con:
+
+productos seleccionados,
+cantidades,
+subtotal,
+fecha/hora,
+nombre del cliente.
+
+Eso ayuda mucho antes de confirmar. En apps de pedidos, ver el “carrito” reduce errores.
+
+Confirmación visual más fuerte
+
+Después de guardar, en vez de solo un toast:
+
+mensaje de éxito más visible,
+número interno del pedido,
+botones de acción bien agrupados:
+enviar a cliente,
+enviar a cocina,
+nuevo pedido.
+Limpieza automática del formulario
+
+Después de confirmar, poder dejar el formulario limpio para iniciar otro pedido rápido. En operación diaria esto ahorra tiempo.
+
+Validaciones más claras
+
+Ahora la app funciona, pero sería mejor guiar al usuario con mensajes más específicos:
+
+falta nombre,
+no hay productos,
+teléfono inválido,
+falta dirección.
+
+No cambia lógica, pero mejora mucho la sensación de calidad.
+
+2. Mejoras para operación diaria
+Búsqueda de pedidos
+
+Muy útil en el tablero:
+
+buscar por nombre,
+teléfono,
+fecha,
+estado.
+
+Cuando ya tienes varios pedidos, esto se vuelve casi obligatorio.
+
+Filtros rápidos
+
+Por ejemplo:
+
+hoy,
+mañana,
+todos,
+pendientes,
+cocina,
+listos,
+entregados.
+
+Eso hace el tablero mucho más útil cuando la cantidad crece.
+
+Ordenar pedidos
+
+Mostrar primero:
+
+entregas más cercanas,
+luego por rango horario,
+luego por cliente.
+
+Hoy ya muestras pedidos, pero el valor operativo aumenta mucho si el orden refleja prioridad real.
+
+Vista “solo cocina”
+
+Una pantalla o bloque simplificado con solo:
+
+cliente,
+horario,
+detalle de cocina,
+estado.
+
+Sin tanta información administrativa. Muy útil si alguien en cocina usa solo esa parte.
+
+3. Mejoras de negocio
+Catálogo editable
+
+Ahora los productos están fijos en código.
+A futuro, una mejora fuerte sería administrarlos desde base de datos:
+
+activar/desactivar productos,
+cambiar precios,
+cambiar nombres,
+agregar nuevos.
+
+Eso evita tocar código cada vez que cambie algo.
+
+Extras y observaciones
+
+Agregar campo por pedido como:
+
+sin azúcar,
+entregar sin tocar timbre,
+pan más tostado,
+cobrar contra entrega,
+enviar comprobante.
+
+En negocio real esto aparece muy rápido.
+
+Costos de envío
+
+Si en algún momento haces entregas con diferentes zonas, puedes sumar:
+
+envío fijo,
+envío por zona,
+o pickup.
+
+Eso profesionaliza mucho la app.
+
+Métodos de pago
+
+Guardar si el pedido será:
+
+SINPE,
+efectivo,
+transferencia,
+pendiente de pago.
+
+Y luego poder filtrar por eso.
+
+4. Mejoras de seguimiento del pedido
+Flujo de estados más completo
+
+Tu flujo actual ya sirve.
+Pero podrías evolucionarlo a algo más realista:
+
+Pendiente
+Confirmado
+En preparación
+Listo
+En ruta
+Entregado
+Cancelado
+
+Eso da más control si el negocio crece.
+
+Historial de cambios
+
+Guardar:
+
+quién cambió el estado,
+cuándo se cambió,
+de qué estado a cuál.
+
+Muy útil si varias personas usan la app.
+
+Cancelación diferenciada
+
+No es lo mismo eliminar que cancelar.
+En muchos negocios conviene:
+
+eliminar = error de captura,
+cancelar = pedido real que no se entregó.
+
+Así no pierdes historial.
+
+5. Mejoras de comunicación
+WhatsApp más inteligente
+
+Ahora generas mensajes útiles, pero podrías ir más allá:
+
+mensaje de confirmación al cliente,
+mensaje de “pedido en preparación”,
+mensaje de “pedido listo”,
+mensaje de “va en camino”.
+
+Eso hace que la app se sienta mucho más integrada al proceso real.
+
+Plantillas de mensajes
+
+Poder escoger plantillas como:
+
+cliente nuevo,
+pedido confirmado,
+recordatorio de pago,
+confirmación de entrega.
+
+Muy práctico para no reescribir nada.
+
+6. Mejoras visuales del tablero
+Tarjetas más claras
+
+Hoy el tablero funciona, pero si quieres una mejora fuerte de UI:
+
+tarjetas con color por estado,
+horario destacado,
+total visible,
+botones más compactos,
+observaciones resaltadas.
+Indicadores arriba del tablero
+
+Algo tipo métricas:
+
+pedidos de hoy,
+pendientes,
+en cocina,
+listos,
+ventas del día.
+
+Eso le da aspecto de sistema real de operación.
+
+Vista móvil más agresiva
+
+Tu app ya tiene intención mobile-first.
+Podrías reforzar eso con:
+
+bloques más grandes,
+menos columnas en móvil,
+tarjetas verticales,
+menos texto por línea,
+botones fijos grandes.
+7. Mejoras de datos y administración
+Dashboard de ventas
+
+Muy valioso después de unas semanas:
+
+ventas por día,
+producto más vendido,
+cliente que más compra,
+ticket promedio,
+horarios con más pedidos.
+
+Eso transforma la app de “operativa” a “herramienta de negocio”.
+
+Exportaciones más útiles
+
+Además del CSV:
+
+pedidos del día,
+resumen por producto,
+resumen para cocina,
+resumen por rango de fechas.
+Base de clientes
+
+Guardar historial por cliente:
+
+nombre,
+teléfono,
+dirección,
+últimos pedidos,
+preferencias.
+
+Eso ayuda muchísimo si los clientes repiten.
+
+8. Mejoras de seguridad y control
+Más de un usuario
+
+Ahora la autenticación está pensada para un usuario.
+A futuro sería útil:
+
+admin,
+cocina,
+repartidor,
+ventas.
+
+Cada uno con acceso distinto.
+
+Auditoría básica
+
+Registrar acciones como:
+
+quién borró,
+quién cambió estado,
+cuándo se creó.
+Protección ante errores
+
+Por ejemplo:
+
+confirmación antes de eliminar,
+confirmación antes de marcar entregado,
+evitar duplicados accidentales.
+9. Mejoras funcionales que suelen gustar mucho
+Duplicar pedido
+
+Muy útil si un cliente pide lo mismo con frecuencia.
+
+Reordenar cliente frecuente
+
+Buscar cliente y cargar dirección/teléfono automáticamente.
+
+Impresión o ticket
+
+Generar un comprobante interno simple para cocina o entrega.
+
+Modo oscuro o alto contraste
+
+Especialmente útil si alguien usa la app en cocina o durante muchas horas.
+
+Notas internas
+
+Separar:
+
+nota para cliente,
+nota interna para cocina.
+10. Mejoras de producto si piensas escalarla
+Inventario básico
+
+Si manejas productos limitados por día:
+
+stock diario de pan,
+stock de rellenos,
+bloquear venta cuando se acaba.
+Cierres diarios
+
+Botón o vista de cierre:
+
+total vendido,
+pedidos entregados,
+pedidos cancelados,
+pendientes para mañana.
+Soporte multi-negocio o sucursal
+
+Si en el futuro quieres reutilizar la app para más de una operación.
+
+Prioridades recomendadas
+
+Si yo tuviera que priorizar por impacto real, propondría este orden:
+
+Fase 1: mejoras rápidas de alto valor
+resumen del pedido en vivo,
+validaciones más claras,
+filtros y búsqueda,
+métricas del día,
+confirmación antes de eliminar.
+Fase 2: mejoras operativas
+estados más completos,
+observaciones del pedido,
+base de clientes,
+catálogo editable,
+dashboard de ventas.
+Fase 3: mejoras más pro
+usuarios con roles,
+historial de cambios,
+inventario,
+analítica,
+automatización de mensajes.
+Resumen
+
+Tu app ya tiene lo más importante: captura, persistencia, comunicación y operación.
+Las mejoras más naturales para este tipo de apps suelen caer en cuatro áreas:
+
+más claridad al tomar el pedido,
+más control en el tablero,
+más información de negocio,
+más automatización del flujo.
+
+Si quieres, te puedo ordenar estas ideas en un roadmap v1.1 / v1.2 / v2.0 para que sepas qué conviene hacer primero y qué dejar para después.

@@ -54,7 +54,9 @@ streamlit run app.py
 
 ## 📝 Configuration Note
 
-The application uses pre-hashed passwords for security. To change credentials, generate a new hash using `stauth.Hasher.hash('your_password')` and update the `my_hashed_password` variable in `app.py`.
+The application uses pre-hashed passwords for security. To change credentials, generate a new hash using `stauth.Hasher.hash('your_password')` and update the `my_hashed_password` variable in 
+
+ the secrets.toml file
 
 ## 💡 Tips for your GitHub Repository
 

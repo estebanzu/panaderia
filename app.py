@@ -136,7 +136,7 @@ if st.session_state.get("authentication_status"):
                         "horario": delivery_time
                     }
                     supabase.table("pedidos").insert(data).execute()
-                    st.toast(f"💾 Guardado: {cust_name}", icon="✅")
+                    st.toast(f" Guardado : {cust_name}", icon="✅")
                 except Exception as e:
                     st.error(f"Error DB: {e}")
 
@@ -150,7 +150,7 @@ if st.session_state.get("authentication_status"):
                     f"⏰ Hora: {delivery_time}\n"
                     f"🏠 Dir: {address}\n"
                     f"Total: ₡{total:,}\n"
-                    f"💳 SINPE: 8883-0657"
+                    f"💳 SINPE: 8883-0657 or Efectivo"
                 )
                 
                 st.subheader("📲 Enviar Resúmenes")

@@ -20,7 +20,20 @@ from config import (
 )
 
 
-
+def obtener_ultimas_ventas(supabase: Client, limite: int = 5) -> pd.DataFrame:
+    """Retorna las últimas N ventas (incluyendo entregadas) para el historial rápido."""
+    try:
+        response = (
+            supabase
+            .table(TABLA_PEDIDOS)
+            .select("cliente, total, fecha_entrega, estado")
+            .order("created_at", desc=True)
+            .limit(limite)
+            .execute()
+        )
+        return pd.DataFrame(response.data or [])
+    except Exception:
+        return pd.DataFrame()
 
 def normalize_text(value: Any) -> str:
     """Normalizes text inputs while preserving original functionality."""

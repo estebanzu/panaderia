@@ -63,14 +63,14 @@ def eliminar_pedido_ui(id_pedido: int) -> None:
         st.error(f"Error eliminando pedido: {exc}")
 
 
-def collect_customer_data() -> tuple[str, str, str]:
+def collect_customer_data() -> tuple[str, str, str, str]:
     with st.container():
         col_left, col_right = st.columns(2)
         cust_name = normalize_text(col_left.text_input("Nombre Cliente"))
         phone = normalize_text(col_right.text_input("WhatsApp (8 digitos)", placeholder="88888888"))
         address = normalize_text(st.text_area("Direccion Exacta"))
-    return cust_name, phone, address
-
+        observaciones = normalize_text(st.text_area("Observaciones del pedido"))
+    return cust_name, phone, address,observaciones 
 
 def collect_delivery_data() -> tuple[date, str]:
     st.subheader("Programacion de Entrega")
@@ -124,6 +124,7 @@ def process_new_order(
     cust_name: str,
     phone: str,
     address: str,
+    observaciones: str,
     delivery_date: date,
     delivery_time: str,
     order: dict,
@@ -137,13 +138,14 @@ def process_new_order(
 
     total = sum(item["sub"] for item in order.values())
     fecha_str = format_delivery_date(delivery_date)
-    resumen_cocina = build_resumen_cocina(cust_name, fecha_str, delivery_time, address, order)
+    resumen_cocina = build_resumen_cocina(cust_name, fecha_str, delivery_time, address, order,observaciones)
 
     try:
         data = build_pedido_payload(
             cust_name=cust_name,
             phone=phone,
             address=address,
+            observaciones=observaciones,
             resumen_cocina=resumen_cocina,
             total=total,
             fecha_str=fecha_str,
@@ -195,15 +197,15 @@ def render_admin_filters(df: pd.DataFrame) -> pd.DataFrame:
 def render_tab_ventas() -> None:
     """Renders the sales tab."""
     st.title("Generar Pedido")
-    cust_name, phone, address = collect_customer_data()
+    cust_name, phone, address, observaciones = collect_customer_data()
     delivery_date, delivery_time = collect_delivery_data()
     order = collect_order_items()
 
-    render_order_summary(cust_name, phone, address, delivery_date, delivery_time, order)
-
+    render_order_summary(cust_name, phone, address, observaciones, delivery_date, delivery_time, order)
+    
     st.divider()
     if st.button("Confirmar Pedido", use_container_width=True):
-        process_new_order(cust_name, phone, address, delivery_date, delivery_time, order)
+        process_new_order(cust_name, phone, address,observaciones, delivery_date, delivery_time, order)
 
 def validar_pedido(cust_name: str, phone: str, address: str, order: dict) -> list[str]:
     """Valida los campos del pedido y retorna lista de errores."""
@@ -254,6 +256,9 @@ def render_estado_column(df: pd.DataFrame, source_state: str, title: str, button
                 st.write(f"Total: {pedido['total']:,}")
             else:
                 st.write(pedido["detalle_cocina"])
+
+            if pedido.get("observaciones"):
+                st.info(f"Observaciones: {pedido['observaciones']}")
 
             col1, col2 = st.columns(2)
 
@@ -331,6 +336,7 @@ def render_order_summary(
     cust_name: str,
     phone: str,
     address: str,
+    observaciones: str,
     delivery_date: date,
     delivery_time: str,
     order: dict,
@@ -344,6 +350,7 @@ def render_order_summary(
     st.markdown(f"**Cliente:** {cust_name or '-'}")
     st.markdown(f"**WhatsApp:** {phone or '-'}")
     st.markdown(f"**Dirección:** {address or '-'}")
+    st.markdown(f"**Observaciones:** {observaciones or '-'}")
     st.markdown(f"**Entrega:** {format_delivery_date(delivery_date)}")
     st.markdown(f"**Horario:** {delivery_time}")
 

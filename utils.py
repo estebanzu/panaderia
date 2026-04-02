@@ -78,6 +78,7 @@ def build_resumen_cocina(
     delivery_time: str,
     address: str,
     order: dict,
+    observaciones: str,
 ) -> str:
     """Builds the kitchen summary text."""
     encabezado = (
@@ -88,6 +89,10 @@ def build_resumen_cocina(
         f"-------------------\n"
     )
     detalle = "\n".join([f"- {value['qty']}x {key}" for key, value in order.items()])
+
+    if observaciones:
+        resumen += f"\n-------------------\nObservaciones: {observaciones}"
+        
     return encabezado + detalle
 
 
@@ -134,6 +139,7 @@ def build_pedido_payload(
     cust_name: str,
     phone: str,
     address: str,
+    observaciones: str,
     resumen_cocina: str,
     total: int,
     fecha_str: str,
@@ -144,6 +150,7 @@ def build_pedido_payload(
         "cliente": cust_name,
         "telefono": phone,
         "direccion": address,
+        "observaciones": observaciones,
         "detalle_cocina": resumen_cocina,
         "total": total,
         "estado": "Pendiente",

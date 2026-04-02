@@ -13,6 +13,7 @@ from config import (
     DEFAULT_SINPE_MOVIL,
     DEFAULT_WA_COCINA,
     ESTADO_ENTREGADO,
+    ESTADO_CANCELADO,
     TABLA_PEDIDOS,
     WA_PREFIX_CR,
     get_secret,
@@ -92,7 +93,7 @@ def build_resumen_cocina(
 
     if observaciones:
         resumen += f"\n-------------------\nObservaciones: {observaciones}"
-        
+
     return encabezado + detalle
 
 
@@ -173,9 +174,15 @@ def actualizar_estado_pedido(supabase: Client, id_pedido: Any, nuevo_estado: str
 
 
 def obtener_pedidos_activos(supabase: Client) -> pd.DataFrame:
-    """Returns all non-delivered orders as a DataFrame."""
+    """Returns all active (non-delivered, non-cancelled) orders as a DataFrame."""
     try:
-        response = supabase.table(TABLA_PEDIDOS).select("*").not_.eq("estado", ESTADO_ENTREGADO).execute()
+        response = (
+            supabase
+            .table(TABLA_PEDIDOS)
+            .select("*")
+            .not_.in_("estado", [ESTADO_ENTREGADO, ESTADO_CANCELADO])
+            .execute()
+        )
         return pd.DataFrame(response.data or [])
     except Exception:
         return pd.DataFrame()

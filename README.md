@@ -1,65 +1,33 @@
-# 🍞 Bakery Order Management System (Costa Rica)
+# 🍞 Panadería Esteban: Order Management System
 
-A streamlined, mobile-friendly web application built with Python and Streamlit to manage artisanal bakery orders. Designed specifically for the Costa Rican market, it automates the generation of order summaries, calculates totals in Colones (₡), and facilitates direct communication with customers via WhatsApp.
+[cite_start]Una aplicación web robusta y optimizada para móviles diseñada para gestionar pedidos de panadería artesanal en el mercado de Costa Rica. [cite_start]Este sistema automatiza la toma de pedidos, centraliza la logística en la nube y facilita la comunicación directa con clientes y personal de cocina a través de WhatsApp.
 
-## 🚀 Key Features
+## 🚀 Características Principales
 
-- **Secure Authentication**: Integrated with `streamlit-authenticator` for secure access control.
-- **Dynamic Order Generation**: Select from an embedded catalog of bakery products (bollos, empanadas, chiverre, etc.).
-- **Smart WhatsApp Integration**: Automatically cleans phone numbers to 8-digit CR format, prepends the `+506` country code, and generates a pre-filled WhatsApp message.
-- **Order Scheduling**: Select delivery dates and configurable time windows (Morning/Afternoon).
-- **Payment Integration**: Includes SINPE Móvil payment instructions in the final order summary.
-- **Automated Logging**:
-  - Generates a detailed `.txt` file for every individual order.
-  - Appends order metadata to `pedidos_historial.csv` for business analytics.
-- **Mobile Optimized UI**: Clean, responsive interface designed for quick use on smartphones.
+* [cite_start]**Autenticación Segura**: Control de acceso integrado con `streamlit-authenticator` y soporte para persistencia de sesión mediante cookies de 30 días[cite: 1, 3].
+* [cite_start]**Gestión de Inventario Dinámica**: Catálogo integrado de productos tradicionales (bollos, empanadas de chiverre, etc.) con cálculo automático de totales en Colones (₡)[cite: 1, 3].
+* **Integración Inteligente con WhatsApp**:
+    * [cite_start]**Cliente**: Envío de resumen detallado con instrucciones de pago SINPE Móvil[cite: 1, 4].
+    * [cite_start]**Cocina**: Envío de comandas simplificadas directamente al personal de producción[cite: 1, 4].
+* **Tablero de Control en Tiempo Real**:
+    * [cite_start]Métricas de rendimiento como pedidos activos, confirmados, en preparación y listos[cite: 1, 28].
+    * [cite_start]Flujo logístico por estados: Pendiente → Confirmado → Preparación → Listo → Ruta → Entregado[cite: 1, 21].
+* **Historial Rápido**: Visualización de las últimas 5 ventas en el sidebar para una referencia operativa inmediata.
+* [cite_start]**Optimización Mobile-First**: Interfaz diseñada con CSS personalizado para facilitar la entrada de datos en pantallas táctiles con botones y campos numéricos de gran tamaño[cite: 1, 3].
 
-## 🛠️ Tech Stack
+## 🛠️ Stack Tecnológico
 
-- Language: Python 3.12+
-- Framework: Streamlit
-- Authentication: streamlit-authenticator
-- Data Handling: Pandas (for CSV logging)
-- Deployment: Streamlit Cloud / GitHub
+* [cite_start]**Lenguaje**: Python 3.12+.
+* [cite_start]**Frontend**: Streamlit.
+* [cite_start]**Base de Datos**: Supabase (PostgreSQL) para persistencia de datos en tiempo real[cite: 1, 4].
+* [cite_start]**Autenticación**: `streamlit-authenticator` v0.4.2.
+* [cite_start]**Procesamiento de Datos**: Pandas.
 
-## 📂 Project Structure
+## 📂 Estructura del Proyecto
 
-```
-├── app.py                # Main application logic and UI
-├── requirements.txt      # Python dependencies for deployment
-├── pedidos/              # Directory where individual .txt orders are stored
-└── pedidos_historial.csv # Centralized log of all bakery transactions
-```
-
-## ⚙️ Installation & Setup
-
-1. Clone the repository:
-
-```bash
-git clone https://github.com/your-username/panaderia.git
-cd panaderia
-```
-
-2. Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-3. Run the application:
-
-```bash
-streamlit run app.py
-```
-
-## 📝 Configuration Note
-
-The application uses pre-hashed passwords for security. To change credentials, generate a new hash using `stauth.Hasher.hash('your_password')` and update the `my_hashed_password` variable in 
-
- the secrets.toml file
-
-## 💡 Tips for your GitHub Repository
-
-- Add a `.gitignore`: Ignore `pedidos/` and `pedidos_historial.csv` if you don’t want customer data public.
-- License: Add an MIT License or keep it private if this contains sensitive business logic.
-
+```text
+├── app.py                # Lógica principal de la interfaz y flujo de la aplicación
+├── config.py             # Configuraciones globales, catálogo de productos y estilos CSS
+├── utils.py              # Funciones auxiliares e integración con la API de Supabase
+├── requirements.txt      # Dependencias del proyecto para despliegue
+└── .streamlit/secrets.toml # Credenciales de base de datos y configuración de seguridad

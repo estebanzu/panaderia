@@ -37,6 +37,7 @@ from utils import (
     init_supabase,
     normalize_text,
     obtener_pedidos_activos,
+    obtener_ultimas_ventas,
 )
 
 st.set_page_config(page_title=PAGE_TITLE, layout=PAGE_LAYOUT, page_icon=PAGE_ICON)
@@ -478,6 +479,27 @@ def render_tab_admin() -> None:
     with tab_ruta:
         render_estado_column(df_filtrado, ESTADO_RUTA, "En ruta")
 
+def render_sidebar_history(supabase: Client):
+    st.sidebar.header("🕒 Últimas 5 Ventas")
+    df_recientes = obtener_ultimas_ventas(supabase, 5)
+    
+    if not df_recientes.empty:
+        for _, row in df_recientes.iterrows():
+            # Formato tipo tarjeta pequeña para el sidebar
+            with st.sidebar.container():
+                st.markdown(f"**{row['cliente']}**")
+                col1, col2 = st.columns([2, 1])
+                col1.caption(f"₡ {row['total']:,}")
+                col2.caption(f"{row['estado']}")
+                st.divider()
+    else:
+        st.sidebar.info("No hay ventas registradas.")
+
+
+        
+        # ------------------------
+
+   
 
 def main() -> None:
     authenticator = create_authenticator()
@@ -486,6 +508,8 @@ def main() -> None:
     if st.session_state.get("authentication_status"):
         authenticator.logout("Cerrar Sesion", "sidebar")
         tab_ventas, tab_admin = st.tabs(["Nueva Venta", "Tablero de Control"])
+
+        render_sidebar_history(supabase)
 
         with tab_ventas:
             render_tab_ventas()
